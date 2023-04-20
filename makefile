@@ -8,10 +8,10 @@ BUILD = ./build
 BDIR = $(BUILD)/bin
 ODIR = $(BUILD)/obj
 
-_DEPS = aes_sbox.h correlation_coefficient.h
+_DEPS = aes_sbox.h correlation_coefficient.h ciphertext.hpp
 DEPS = $(patsubt %,$(IDIR)/%,$(_DEPS))
 
-_OBJ_cpa = cpa.o aes_sbox.o correlation_coefficient.o
+_OBJ_cpa = cpa.o aes_sbox.o correlation_coefficient.o ciphertext.o
 OBJ_cpa = $(patsubst %,$(ODIR)/%,$(_OBJ_cpa))
 
 $(shell mkdir -p $(BUILD))

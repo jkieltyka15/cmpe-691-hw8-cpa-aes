@@ -48,6 +48,8 @@ int main(int argc, char* argv[]) {
 
     list<list<int>> power_traces;
 
+    uint8_t key[AES_COL_LEN][AES_ROW_LEN];
+
     // check for correct number of arguments
     if (5 != argc) 
     {
@@ -163,12 +165,21 @@ int main(int argc, char* argv[]) {
     }
     hypo_int_vals.clear();
 
-    // arrayify power consumptions values
-    
-    // create correlation array
+    // determine key byte by byte
+    for (int i = 0; AES_COL_LEN > i; i++) {
+        for (int j = 0; AES_ROW_LEN > j; j++) {
 
-    // detrmine key
+            uint8_t array[POWER_TRACE_LINES][256];
 
+        }
+    }
+
+    // print out the key
+    for (int i = 0; AES_COL_LEN > i; i++) {
+        for (int j = 0; AES_ROW_LEN > j; j++) {
+            output_file << hex << (int)key[i][j];
+        }
+    }
 
     // cleanup
     output_file.close();

@@ -1,7 +1,7 @@
 /**
  * File: correlation_coefficient.c
  *
- * Implementation of correlation coefficient.
+ * Implementation of correlation coefficient and helpful functions.
  */
 
 #include <math.h>
@@ -32,4 +32,12 @@ double corrcoef(int n, int x[], int y[]) {
         * (n * squareSum_y - sum_y * sum_y));
  
     return correlation;
+}
+
+int hw(uint8_t val)
+{
+  return ((0x876543210 >>
+    (((0x4332322132212110 >> ((val & 0xF) << 2)) & 0xF) << 2)) >>
+    ((0x4332322132212110 >> (((val & 0xF0) >> 2)) & 0xF) << 2))
+    & 0xf;
 }

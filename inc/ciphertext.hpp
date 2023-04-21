@@ -15,6 +15,9 @@ namespace aes {
             uint8_t cipher[AES_COL_LEN][AES_ROW_LEN];
 
         public:
+
+            Ciphertext();
+            Ciphertext(Ciphertext* ciphertext);
         
             /**
              *  Sets a byte of the ciphertext.

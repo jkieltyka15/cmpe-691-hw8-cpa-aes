@@ -21,6 +21,10 @@
 #include "aes_sbox.h"
 #include "correlation_coefficient.h"
 
+// constants
+#define POWER_TRACE_LINES         7500
+#define POWER_TRACE_INTS_PER_LINE 2500
+
 // namespaces
 using namespace std;
 using namespace aes;
@@ -38,6 +42,8 @@ int main(int argc, char* argv[]) {
 
     Ciphertext cipher;
     list<Ciphertext> ciphers;
+
+    list<list<int>> power_traces;
 
     // check for correct number of arguments
     if (5 != argc) 
@@ -79,10 +85,25 @@ int main(int argc, char* argv[]) {
             }
         }
         if (!eol) {
-            ciphers.push_front(cipher);
+            ciphers.push_back(cipher);
         }
     }
     cipher_file.close();
+
+    // load power analysis
+    for (int i = 0; POWER_TRACE_LINES > i; i++) {
+        list<int> power_trace_line;
+        for (int j = 0; POWER_TRACE_INTS_PER_LINE > j; j++) {
+            char power_trace_str[4];
+            power_analysis_file >> power_trace_str;
+            power_trace_line.push_back(stoi(power_trace_str));
+        }
+        power_traces.push_back(power_trace_line);
+    }
+    power_analysis_file.close();
+
+    // cleanup
+    output_file.close();
 
     return 0;
 }

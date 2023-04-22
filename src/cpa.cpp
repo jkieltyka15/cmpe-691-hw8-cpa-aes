@@ -197,7 +197,7 @@ int main(int argc, char* argv[]) {
         // find the key byte with the most correlation
         for (int key_line = 0; NUM_POSSIBLE_KEYS > key_line; key_line++) {
             for (int power_line = 0; POWER_TRACE_INTS_PER_LINE > power_line; power_line++) {
-                double correlation = abs(corrcoef(POWER_TRACE_LINES, &power_array[key_line][0], &power_traces[power_line][0]));
+                double correlation = corrcoef(POWER_TRACE_LINES, &power_array[key_line][0], &power_traces[power_line][0]);
                 correlation = correlation >= 0 ? correlation : correlation * -1; 
                 if (h_correlation.second < correlation) {
                     h_correlation.first = key_line;

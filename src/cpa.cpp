@@ -9,6 +9,7 @@
 #include <fstream>
 #include <list>
 #include <string>
+#include <utility>
 
 // c libraries
 #include <stdint.h>
@@ -24,6 +25,7 @@
 // constants
 #define POWER_TRACE_LINES         7500
 #define POWER_TRACE_INTS_PER_LINE 2500
+#define NUM_POSSIBLE_KEYS         256
 
 // namespaces
 using namespace std;
@@ -44,11 +46,14 @@ int main(int argc, char* argv[]) {
     list<Ciphertext> ciphers;
 
     list<list<Ciphertext>> hypo_int_vals;
-    list<list<int>> hypo_power_traces;
+    list<list<list<int>>> hypo_power_traces;
 
-    list<list<int>> power_traces;
+    int key[AES_COL_LEN * AES_ROW_LEN];
 
-    uint8_t key[AES_COL_LEN][AES_ROW_LEN];
+    int** power_traces = new int*[POWER_TRACE_INTS_PER_LINE];
+    for (int i = 0; POWER_TRACE_INTS_PER_LINE > i; i++) {
+        power_traces[i] = new int[POWER_TRACE_LINES];
+    }
 
     // check for correct number of arguments
     if (5 != argc) 
@@ -56,7 +61,7 @@ int main(int argc, char* argv[]) {
         cerr << "Incorrect number of arguments. Expecting: \'./cpa <inverse sbox file> <ciphertext file> <power analysis file> <output file>\'" << endl;
         return 1;
     }
-
+    
     // give arguments nice names
     inverse_sbox_file_path = argv[1];
     cipher_file_path = argv[2];
@@ -69,9 +74,11 @@ int main(int argc, char* argv[]) {
     output_file.open(output_file_path, ofstream::out);
 
     // load inverse sbox
+    cout << "Loading inverse sbox..." << endl;
     inverse_sbox_load(inverse_sbox_file_path);
 
     // load ciphertext
+    cout << "Loading ciphertexts..." << endl;
     for (bool eol = false; !eol;) {
         for (int i = 0; AES_COL_LEN > i; i++) {
             for (int j = 0; AES_ROW_LEN > j; j++) {
@@ -95,25 +102,25 @@ int main(int argc, char* argv[]) {
     }
     cipher_file.close();
 
-    // load power analysis
-    for (int i = 0; POWER_TRACE_LINES > i; i++) {
-        list<int> power_trace_line;
-        for (int j = 0; POWER_TRACE_INTS_PER_LINE > j; j++) {
+    // load power traces
+    cout << "Loading power traces..." << endl;
+    for (int j = 0; POWER_TRACE_LINES > j; j++) {
+        for (int i = 0; POWER_TRACE_INTS_PER_LINE > i; i++) {
             char power_trace_str[4];
             power_analysis_file >> power_trace_str;
-            power_trace_line.push_back(stoi(power_trace_str));
+            power_traces[i][j] = stoi(power_trace_str);
         }
-        power_traces.push_back(power_trace_line);
     }
     power_analysis_file.close();
 
     // calculate hypthetical intermediate values
+    cout << "Calculating hypothetical intermediate values..." << endl;
     for (auto ciphertext = ciphers.begin(); ciphertext != ciphers.end(); ciphertext++) {
 
         list<Ciphertext> hypo_vals;
 
         // perform inverse AES round for every key byte value
-        for (int key = 0; 256 > key; key++) {
+        for (int key = 0; NUM_POSSIBLE_KEYS > key; key++) {
 
             Ciphertext hypo_val = Ciphertext(*ciphertext);
 
@@ -150,39 +157,74 @@ int main(int argc, char* argv[]) {
     ciphers.clear();
 
     // calculate hypothetical power consumption values
+    cout << "Calculating hypothetical power consumption values..." << endl;
     for (auto int_ciphers = hypo_int_vals.begin(); int_ciphers != hypo_int_vals.end(); int_ciphers++) {
-
-        list<int> hypo_power_trace;
-
+        list<list<int>> hypo_power_trace_for_block;
         for (auto int_cipher = int_ciphers->begin(); int_cipher != int_ciphers->end(); int_cipher++) {
+            list<int> hypo_power_trace;
             for (int i = 0; AES_COL_LEN > i; i++) {
                 for (int j = 0; AES_ROW_LEN > j; j++) {
                     hypo_power_trace.push_back(hw(int_cipher->get_byte(i,j)));
                 }
             }
+            hypo_power_trace_for_block.push_back(hypo_power_trace);
         }
-        hypo_power_traces.push_back(hypo_power_trace);
+        hypo_power_traces.push_back(hypo_power_trace_for_block);
     }
     hypo_int_vals.clear();
 
     // determine key byte by byte
-    for (int i = 0; AES_COL_LEN > i; i++) {
-        for (int j = 0; AES_ROW_LEN > j; j++) {
+    for (int i = 0; AES_COL_LEN * AES_ROW_LEN > i; i++) {
 
-            uint8_t array[POWER_TRACE_LINES][256];
+        pair<int, double> h_correlation = make_pair(0, 0);
 
+        int power_array[NUM_POSSIBLE_KEYS][POWER_TRACE_LINES];
+        int power_trace_line = 0;
+
+        cout << "Determining key byte " << dec << i << "..." << endl;
+
+        // arryify powers for byte position
+        for (auto powers = hypo_power_traces.begin(); powers != hypo_power_traces.end(); powers++) {
+            int key_line = 0;
+            for (auto power = powers->begin(); power != powers->end(); power++) {
+                power_array[key_line][power_trace_line] = power->front();
+                power->pop_front();
+                key_line++;
+            }
+            power_trace_line++;
         }
+
+        // find the key byte with the most correlation
+        for (int key_line = 0; NUM_POSSIBLE_KEYS > key_line; key_line++) {
+            for (int power_line = 0; POWER_TRACE_INTS_PER_LINE > power_line; power_line++) {
+                double correlation = abs(corrcoef(POWER_TRACE_LINES, &power_array[key_line][0], &power_traces[power_line][0]));
+                correlation = correlation >= 0 ? correlation : correlation * -1; 
+                if (h_correlation.second < correlation) {
+                    h_correlation.first = key_line;
+                    h_correlation.second = correlation;
+                }
+            }
+        }
+        key[i] = h_correlation.first;
+        cout << "key byte " << dec << i;
+        cout << ": " << hex << key[i] << endl;
     }
+    hypo_power_traces.clear();
 
     // print out the key
-    for (int i = 0; AES_COL_LEN > i; i++) {
-        for (int j = 0; AES_ROW_LEN > j; j++) {
-            output_file << hex << (int)key[i][j];
-        }
+    cout << "key: ";
+    for (int i = 0; AES_COL_LEN * AES_COL_LEN > i; i++) {
+        cout << hex << key[i];
+        output_file << hex << key[i];
     }
+    cout << endl;
 
     // cleanup
     output_file.close();
+    for (int i = 0; POWER_TRACE_INTS_PER_LINE > i; i++) {
+        delete power_traces[i];
+    }
+    delete power_traces;
 
     return 0;
 }

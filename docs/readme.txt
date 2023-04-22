@@ -17,3 +17,4 @@ Build and Test:
 Notes
     * Simply using the command 'make' will build everything.
     * To clean the 'build/bin' directory, use the command 'make clean'.
+    * This program takes awhile to run since it is not optomized. Standard output is printed out to show program is not hanging.
